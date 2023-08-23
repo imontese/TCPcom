@@ -3,6 +3,7 @@ import threading
 import time
 
 HEADER = 64
+MESSAGE_LENGTH = 2048 
 PORT = 5050
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
@@ -19,15 +20,15 @@ def handle_client(conn, addr):
 
     connected = True
     while connected:
-        mgs_length = conn.recv(HEADER).decode(FORMAT)
-        if mgs_length:
-            mgs_length = int(mgs_length)
-            msg = conn.recv(mgs_length).decode(FORMAT)
-            if msg == DISCONNECT_MESSAGE:
-                connected = False
-
+        msg = conn.recv(MESSAGE_LENGTH)
+        if len(msg) != 0:
+            # mgs_length = int(mgs_length)
+            #msg = conn.recv(MESSAGE_LENGTH)
             print(f"[{addr}] {msg}")
-            conn.send("Msg received".encode(FORMAT))
+            conn.send(msg)
+        else:
+            print("[STOP CONNECTION] {addr} stopped.")
+            connected = False
 
     conn.close()
 
