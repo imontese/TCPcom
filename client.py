@@ -8,7 +8,7 @@ import random
 LENGTH = 32
 PORT = 5050
 FORMAT = 'utf-8'
-SERVER = "192.168.17.100"
+SERVER = "192.168.17.110"
 ADDR = (SERVER, PORT)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
