@@ -30,9 +30,8 @@ def toggle_bit_0(value_to_send):
 def toggle_bit_task(stop_event):  
     global value_to_send  
     while not stop_event.is_set():  
-        value_to_send = toggle_bit_0(value_to_send)  
-        binary_str = format(value_to_send, '032b')  
-        #print(binary_str)  
+        value_to_send = toggle_bit_0(value_to_send)    
+        #print(value_to_send)  
         time.sleep(0.5) 
 
 # Send and receive the data packets
