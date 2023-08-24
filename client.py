@@ -8,7 +8,7 @@ import random
 LENGTH = 32
 PORT = 5050
 FORMAT = 'utf-8'
-SERVER = "192.168.17.110"
+SERVER = "192.168.17.100"
 ADDR = (SERVER, PORT)
 
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,6 +37,7 @@ def toggle_bit_task(stop_event):
 # Send and receive the data packets
 def send():
     global value_to_send
+    print(f'Send value on Send function {value_to_send}')
     msg_length = value_to_send.bit_length()
     send_length = str(msg_length).encode(FORMAT)
     if msg_length > 32:
@@ -69,6 +70,8 @@ def send():
 
 def task_100ms(stop_event):
     while not stop_event.is_set():  
+        value_to_send = random.randint(0, 2**32 - 1)
+        print(f'Send value {value_to_send}')
         time_taken = measure_time(send)  
         #print(f"Time taken: {time_taken} seconds")   
             
