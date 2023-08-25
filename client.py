@@ -14,6 +14,29 @@ ADDR = (SERVER, PORT)
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
+
+class SharedData:
+    def __init__(self, initial_value):
+        self.value_to_send = initial_value
+        self.lock = threading.Lock()
+
+    # Toggle Bit-0
+    def toggle_bit_0(self):
+        with self.lock:
+            self.value_to_send ^= 0x1
+
+    def get_value_to_send(self):
+        with self.lock:
+            return self.value_to_send
+
+    # Update the value keeping the bit-0
+    def update_value_to_send(self):
+        new_value = random.randint(0, 2**32 - 1)
+        with self.lock:
+            bit_0 = self.value_to_send & 0x1
+            self.value_to_send = (new_value & ~0x1) | bit_0 
+
+
 # The measure_time calculates the time taken to execute a task  
 def measure_time(task, *args, **kwargs):  
     start_time = time.perf_counter()  
@@ -23,23 +46,17 @@ def measure_time(task, *args, **kwargs):
     time_taken = end_time - start_time  
     return time_taken 
 
-# Toggle Bit-0
-def toggle_bit_0(value_to_send):  
-    return value_to_send ^ 0x1 
 
-def toggle_bit_task(stop_event):  
-    global value_to_send  
+def toggle_bit_task(share_data, stop_event):   
     while not stop_event.is_set():  
-        value_to_send = toggle_bit_0(value_to_send)    
+        share_data.toggle_bit_0()   
         #print(value_to_send)  
         time.sleep(0.5) 
 
 # Send and receive the data packets
-def send():
-    global value_to_send
-    print(f'Send value on Send function {value_to_send}')
+def send(share_data):
+    value_to_send = share_data.get_value_to_send()
     msg_length = value_to_send.bit_length()
-    send_length = str(msg_length).encode(FORMAT)
     if msg_length > 32:
         print("Exceed 32 bits")
         return
@@ -50,7 +67,9 @@ def send():
             client.sendall(packed_data)
             received_data = client.recv(2048)
             received_value = struct.unpack('>I', received_data)[0]
-            print(received_value)
+            binary_representation = format(received_value, 'b')  
+            print(binary_representation)
+            #print(received_value)
 
             # Compare the sent and received data  
             if packed_data != received_data:  
@@ -68,11 +87,10 @@ def send():
                 print(f"Failed to reconnect: {e}")  
 
 
-def task_100ms(stop_event):
+def task_100ms(share_data, stop_event):
     while not stop_event.is_set():  
-        value_to_send = random.randint(0, 2**32 - 1)
-        print(f'Send value {value_to_send}')
-        time_taken = measure_time(send)  
+        share_data.update_value_to_send()
+        time_taken = measure_time(send, share_data)  
         #print(f"Time taken: {time_taken} seconds")   
             
         # Sleep for the remaining time to achieve a total of 100ms per cycle  
@@ -81,15 +99,15 @@ def task_100ms(stop_event):
     
 
 # Initial 32-bit binary data
-value_to_send = random.randint(0, 2**32 - 1)  
+value_to_send = SharedData(random.randint(0, 2**32 - 1))
 
 # Global flag to control the execution of tasks  
 stop_event = threading.Event() 
 
 
 # Create and start the threads  
-toggle_bit_thread = threading.Thread(target=toggle_bit_task, args=(stop_event,))  
-task_100ms_thread = threading.Thread(target=task_100ms, args=(stop_event,))
+toggle_bit_thread = threading.Thread(target=toggle_bit_task, args=(value_to_send, stop_event,))  
+task_100ms_thread = threading.Thread(target=task_100ms, args=(value_to_send, stop_event,))
 
 toggle_bit_thread.start()  
 task_100ms_thread.start()  
