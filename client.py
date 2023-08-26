@@ -80,6 +80,9 @@ class SharedData:
             self.value_to_send = (new_value & ~0x1) | bit_0 
 
 
+# CustomTaskThread class is a subclass of the threading.Thread class  
+# It accepts a shared_data object, a stop_event, a task_function, a tuple of task_args, and an optional extra_arg  
+# This class allows you to run the specified task_function in a separate thread with the given arguments    
 class CustomTaskThread(threading.Thread):
     def __init__(self, task_args, task_function):
         super().__init__()
