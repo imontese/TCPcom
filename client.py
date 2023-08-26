@@ -11,8 +11,47 @@ FORMAT = 'utf-8'
 SERVER = "192.168.17.100"
 ADDR = (SERVER, PORT)
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(ADDR)
+class Main:
+    def __init__(self, server, port):
+        self.value_to_send = SharedData(random.randint(0, 2**32 - 1))   # Initial 32-bit binary data  
+        self.stop_event = threading.Event()                                  # Global flag to control the execution of tasks
+        self.socket_client = SocketClient(server, port)
+
+    def start(self):
+        with self.socket_client as client:
+
+            # Create and start the threads  
+            toggle_bit_thread = threading.Thread(target=toggle_bit_task, args=(self.value_to_send, self.stop_event,))  
+            task_100ms_thread = threading.Thread(target=task_100ms, args=(self.value_to_send, self.stop_event, client))
+
+            toggle_bit_thread.start()  
+            task_100ms_thread.start()  
+
+            try:  
+                while True:  
+                    # Main thread will sleep and wait for KeyboardInterrupt
+                    time.sleep(1)  
+                    
+            except KeyboardInterrupt:  
+                print("\nStopping threads...")  
+                self.stop_event.set() 
+                toggle_bit_thread.join()  
+                task_100ms_thread.join() 
+                client.close() 
+                print("Threads stopped.") 
+
+
+class SocketClient:
+    def __init__(self, server, port):
+        self.addr = (server, port)
+
+    def __enter__(self):
+        self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.client.connect(ADDR)
+        return self.client
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.client.close()
 
 
 class SharedData:
@@ -54,7 +93,7 @@ def toggle_bit_task(share_data, stop_event):
         time.sleep(0.5) 
 
 # Send and receive the data packets
-def send(share_data):
+def send(share_data, client):
     value_to_send = share_data.get_value_to_send()
     msg_length = value_to_send.bit_length()
     if msg_length > 32:
@@ -87,10 +126,10 @@ def send(share_data):
                 print(f"Failed to reconnect: {e}")  
 
 
-def task_100ms(share_data, stop_event):
+def task_100ms(share_data, stop_event, client):
     while not stop_event.is_set():  
         share_data.update_value_to_send()
-        time_taken = measure_time(send, share_data)  
+        time_taken = measure_time(send, share_data, client)  
         #print(f"Time taken: {time_taken} seconds")   
             
         # Sleep for the remaining time to achieve a total of 100ms per cycle  
@@ -98,29 +137,6 @@ def task_100ms(share_data, stop_event):
         time.sleep(sleep_time)
     
 
-# Initial 32-bit binary data
-value_to_send = SharedData(random.randint(0, 2**32 - 1))
-
-# Global flag to control the execution of tasks  
-stop_event = threading.Event() 
-
-
-# Create and start the threads  
-toggle_bit_thread = threading.Thread(target=toggle_bit_task, args=(value_to_send, stop_event,))  
-task_100ms_thread = threading.Thread(target=task_100ms, args=(value_to_send, stop_event,))
-
-toggle_bit_thread.start()  
-task_100ms_thread.start()  
-
-try:  
-    while True:  
-        # Main thread will sleep and wait for KeyboardInterrupt
-        time.sleep(1)  
-        
-except KeyboardInterrupt:  
-    print("\nStopping threads...")  
-    stop_event.set() 
-    toggle_bit_thread.join()  
-    task_100ms_thread.join() 
-    client.close() 
-    print("Threads stopped.")  
+if __name__ == "__main__":
+    main = Main(SERVER, PORT)
+    main.start()
