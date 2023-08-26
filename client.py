@@ -1,8 +1,10 @@
+from collections.abc import Callable, Iterable, Mapping
 import socket
 import threading
 import struct
 import time  
-import random 
+import random
+from typing import Any 
 
 
 LENGTH = 32
@@ -20,9 +22,11 @@ class Main:
     def start(self):
         with self.socket_client as client:
 
+            task_args = (self.value_to_send, self.stop_event, client)
+
             # Create and start the threads  
-            toggle_bit_thread = threading.Thread(target=toggle_bit_task, args=(self.value_to_send, self.stop_event,))  
-            task_100ms_thread = threading.Thread(target=task_100ms, args=(self.value_to_send, self.stop_event, client))
+            toggle_bit_thread = CustomTaskThread(task_args, toggle_bit_task)
+            task_100ms_thread = CustomTaskThread(task_args, task_100ms)
 
             toggle_bit_thread.start()  
             task_100ms_thread.start()  
@@ -76,6 +80,34 @@ class SharedData:
             self.value_to_send = (new_value & ~0x1) | bit_0 
 
 
+class CustomTaskThread(threading.Thread):
+    def __init__(self, task_args, task_function):
+        super().__init__()
+        # self.shared_data = shared_data
+        # self.stop_event = stop_event
+        self.task_args = task_args
+        self.task_function = task_function
+
+    def run(self):
+        self.task_function(*self.task_args)
+        
+
+def toggle_bit_task(share_data, stop_event, client):   
+    while not stop_event.is_set():  
+        share_data.toggle_bit_0()   
+        #print(value_to_send)  
+        time.sleep(0.5) 
+
+def task_100ms(share_data, stop_event, client):
+    while not stop_event.is_set():  
+        share_data.update_value_to_send()
+        time_taken = measure_time(send, share_data, client)  
+        #print(f"Time taken: {time_taken} seconds")   
+            
+        # Sleep for the remaining time to achieve a total of 100ms per cycle  
+        sleep_time = max(0.1 - time_taken, 0)  
+        time.sleep(sleep_time)
+
 # The measure_time calculates the time taken to execute a task  
 def measure_time(task, *args, **kwargs):  
     start_time = time.perf_counter()  
@@ -84,13 +116,6 @@ def measure_time(task, *args, **kwargs):
       
     time_taken = end_time - start_time  
     return time_taken 
-
-
-def toggle_bit_task(share_data, stop_event):   
-    while not stop_event.is_set():  
-        share_data.toggle_bit_0()   
-        #print(value_to_send)  
-        time.sleep(0.5) 
 
 # Send and receive the data packets
 def send(share_data, client):
@@ -104,10 +129,11 @@ def send(share_data, client):
             #Send data to the server
             packed_data = struct.pack('>I', value_to_send)
             client.sendall(packed_data)
+            print(f'Sent data ---- :{value_to_send}')
             received_data = client.recv(2048)
             received_value = struct.unpack('>I', received_data)[0]
             binary_representation = format(received_value, 'b')  
-            print(binary_representation)
+            print(received_value)
             #print(received_value)
 
             # Compare the sent and received data  
@@ -125,16 +151,6 @@ def send(share_data, client):
             except socket.error as e:  
                 print(f"Failed to reconnect: {e}")  
 
-
-def task_100ms(share_data, stop_event, client):
-    while not stop_event.is_set():  
-        share_data.update_value_to_send()
-        time_taken = measure_time(send, share_data, client)  
-        #print(f"Time taken: {time_taken} seconds")   
-            
-        # Sleep for the remaining time to achieve a total of 100ms per cycle  
-        sleep_time = max(0.1 - time_taken, 0)  
-        time.sleep(sleep_time)
     
 
 if __name__ == "__main__":
