@@ -1,0 +1,7 @@
+# config.py
+
+LENGTH = 32
+PORT = 5050
+FORMAT = 'utf-8'
+SERVER = "192.168.17.100"
+ADDR = (SERVER, PORT)
