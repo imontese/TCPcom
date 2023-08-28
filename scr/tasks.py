@@ -4,20 +4,20 @@ import time
 import struct
 import socket
 
-def toggle_bit_task(share_data, stop_event, client):   
+def toggle_bit_task(share_data, stop_event, client, task_cycle):   
     while not stop_event.is_set():  
         share_data.toggle_bit_0()   
         #print(value_to_send)  
-        time.sleep(0.5) 
+        time.sleep(task_cycle) 
 
-def task_100ms(share_data, stop_event, client):
+def send_task(share_data, stop_event, client, task_cycle):
     while not stop_event.is_set():  
         share_data.update_value_to_send()
         time_taken = measure_time(send, share_data, client)  
         #print(f"Time taken: {time_taken} seconds")   
             
         # Sleep for the remaining time to achieve a total of 100ms per cycle  
-        sleep_time = max(0.1 - time_taken, 0)  
+        sleep_time = max(task_cycle - time_taken, 0)  
         time.sleep(sleep_time)
 
 # The measure_time calculates the time taken to execute a task  
@@ -41,12 +41,11 @@ def send(share_data, client):
             #Send data to the server
             packed_data = struct.pack('>I', value_to_send)
             client.sendall(packed_data)
-            print(f'Sent data ---- :{value_to_send}')
+            #print(f'Sent data ---- :{value_to_send}')      # print send data
             received_data = client.recv(2048)
             received_value = struct.unpack('>I', received_data)[0]
             binary_representation = format(received_value, 'b')  
-            print(received_value)
-            #print(received_value)
+            print(binary_representation)
 
             # Compare the sent and received data  
             if packed_data != received_data:  
