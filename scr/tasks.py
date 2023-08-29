@@ -16,7 +16,7 @@ def send_task(share_data, stop_event, client, task_cycle):
         time_taken = measure_time(send, share_data, client)  
         #print(f"Time taken: {time_taken} seconds")   
             
-        # Sleep for the remaining time to achieve a total of 100ms per cycle  
+        # Sleep for the remaining time to achieve the tas_cycle time  
         sleep_time = max(task_cycle - time_taken, 0)  
         time.sleep(sleep_time)
 
