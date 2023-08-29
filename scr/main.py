@@ -9,24 +9,35 @@ import random
 
 
 class Main:
-    def __init__(self, server, port, send_cycle, toggle_cycle):
+    def __init__(self, server, port, operation_mode, send_cycle, toggle_cycle):
         self.value_to_send = SharedData(random.randint(0, 2**32 - 1))   # Initial 32-bit binary data  
         self.stop_event = threading.Event()                             # Global flag to control the execution of tasks
         self.socket_client = SocketClient(server, port)
+        self.op = operation_mode
         self.send_cycle = send_cycle
         self.toggle_cycle = toggle_cycle
+
+    def start_thread(self, client, operation_mode):
+        task_args = (self.value_to_send, self.stop_event, client)
+
+        if self.op == 0:
+            # Create and start the threads  
+            toggle_bit_thread = CustomTaskThread(task_args, toggle_bit_task, self.toggle_cycle)
+            send_thread = CustomTaskThread(task_args, send_task, self.send_cycle)
+            toggle_bit_thread.start()  
+            send_thread.start()
+            return [toggle_bit_thread, send_thread]
+        elif self.op == 1:
+            send_thread = CustomTaskThread(task_args, send_task, self.send_cycle)
+            send_thread.start()
+            return send_thread
+        
+
 
     def start(self):
         with self.socket_client as client:
 
-            task_args = (self.value_to_send, self.stop_event, client)
-
-            # Create and start the threads  
-            toggle_bit_thread = CustomTaskThread(task_args, toggle_bit_task, self.toggle_cycle)
-            send_thread = CustomTaskThread(task_args, send_task, self.send_cycle)
-
-            toggle_bit_thread.start()  
-            send_thread.start()  
+            threads = self.start_thread(client, self.op)
 
             try:  
                 while True:  
@@ -36,12 +47,16 @@ class Main:
             except KeyboardInterrupt:  
                 print("\nStopping threads...")  
                 self.stop_event.set() 
-                toggle_bit_thread.join()  
-                send_thread.join() 
+                if isinstance(threads, list):
+                    for thread in threads:
+                        thread.join()
+                else:
+                    threads.join()
+
                 client.close() 
                 print("Threads stopped.") 
 
 
 if __name__ == "__main__":
-    main = Main(SERVER, PORT, 0.2, 1)
+    main = Main(SERVER, PORT, 0, 0.1, 0.5)
     main.start()
