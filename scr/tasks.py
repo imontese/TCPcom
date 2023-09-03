@@ -45,7 +45,7 @@ def send(share_data, client):
             received_data = client.recv(2048)
             received_value = struct.unpack('>I', received_data)[0]
             binary_representation = format(received_value, 'b')  
-            print(binary_representation)
+            print(received_value)
 
             # Compare the sent and received data  
             if packed_data != received_data:  

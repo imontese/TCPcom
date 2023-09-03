@@ -18,7 +18,7 @@ class ValueGenerator:
                 new_value = random.randint(0, 2**32 -1)
 
                 # Print the generated value
-                print(f'Generated Value {new_value}')
+                #print(f'Generated Value {new_value}')
 
                 # Sleep for random amount of time between min_time and max_time
                 sleep_time = random.uniform(self.min_time, self.max_time)
@@ -38,9 +38,15 @@ class ValueGenerator:
         self.thread.join()
 
 if __name__ == "__main__" :
-    value_generator =ValueGenerator(0.1, 0.1)   # Generates values with variable cycle times
+    value_generator = ValueGenerator(0.1, 0.1)   # Generates values with variable cycle times
 
     try:  
         while True:  
             # Main thread will sleep and wait for KeyboardInterrupt
             time.sleep(1) 
+            value_generator.start()
+
+    except KeyboardInterrupt:
+        print("\nStopping threads...")
+        value_generator.terminate()
+

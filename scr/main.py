@@ -9,14 +9,15 @@ import random
 
 
 class Main:
-    def __init__(self, server, port, operation_mode, send_cycle, toggle_cycle):
+    def __init__(self, addr, operation_mode, send_cycle, toggle_cycle):
         self.value_to_send = SharedData(random.randint(0, 2**32 - 1))   # Initial 32-bit binary data  
         self.stop_event = threading.Event()                             # Global flag to control the execution of tasks
-        self.socket_client = SocketClient(server, port)
+        self.socket_client = SocketClient(addr)
         self.op = operation_mode
         self.send_cycle = send_cycle
         self.toggle_cycle = toggle_cycle
 
+    # Operation Mode selection, OP == 1 toggle_bit_thread does not run 
     def start_thread(self, client, operation_mode):
         task_args = (self.value_to_send, self.stop_event, client)
 
@@ -38,7 +39,7 @@ class Main:
         with self.socket_client as client:
 
             threads = self.start_thread(client, self.op)
-
+           
             try:  
                 while True:  
                     # Main thread will sleep and wait for KeyboardInterrupt
@@ -52,11 +53,10 @@ class Main:
                         thread.join()
                 else:
                     threads.join()
-
                 client.close() 
                 print("Threads stopped.") 
 
 
 if __name__ == "__main__":
-    main = Main(SERVER, PORT, 0, 0.1, 0.5)
+    main = Main(ADDR, 0, 0.1, 0.5)
     main.start()
